@@ -1,5 +1,5 @@
 from distutils.core import setup
-setup(name='ScrapyApperyIoDB',
+setup(name='scrapyapperyio',
       version='0.1.0',
       license='Apache License, Version 2.0',
       description='Scrapy pipeline which allows you to store scrapy items in appery.io database.',
