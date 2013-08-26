@@ -4,7 +4,7 @@ It's a pipeline which allows you to store scrapy items in appery.io database.
 
 Install
 =======
-   pip install "ScrapyApperyIoDB"
+   pip install scrapyapperyio
 
 Configure your settings.py:
 ----------------------------
