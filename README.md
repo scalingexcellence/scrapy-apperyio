@@ -1,6 +1,6 @@
 Description
 ===========
-It's a pipeline which allows you to store scrapy items in appery.io database.
+It's a pipeline which allows you to store scrapy items in appery.io database. Now it works asynchronously and it's extra fast.
 
 Install
 =======
@@ -20,12 +20,12 @@ Configure your settings.py:
 Changelog
 =========
 
-0.1.0
+0.1.1
 initial release
 
 Licence
 =======
-Copyright 2013 Dimitrios Kouzis-Loukas
+Copyright 2013-14 Dimitrios Kouzis-Loukas
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
