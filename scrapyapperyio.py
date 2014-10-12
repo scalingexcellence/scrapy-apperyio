@@ -17,57 +17,77 @@
 from twisted.internet import defer
 from scrapy.http import Request
 from urllib import urlencode
-from scrapy import signals
+from scrapy import log
 import json
 
 
 class ApperyIoPipeline(object):
+    DOWNLOAD_PRIORITY = 1000
+    INSERT_ERROR_DISABLE_THRESHOLD = 5
+
+    _session = None
+    _attempt_login = None
+    _active = False
+    _total_errors = 0
 
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(crawler)
-
-    def __init__(self, crawler):
-        self.crawler = crawler
-        self.settings = crawler.settings
-        self.session = None
-
-        crawler.signals.connect(
-            self.spider_opened,
-            signal=signals.spider_opened
-        )
-
-    def spider_opened(self, spider):
-        request = Request(
-            "https://api.appery.io/rest/1/db/login?{0}".format(urlencode({
-                "username": self.settings.get('APPERYIO_USERNAME'),
-                "password": self.settings.get('APPERYIO_PASSWORD')
-            })),
-            headers={
-                "X-Appery-Database-Id": self.settings.get('APPERYIO_DB_ID')
-            }
-        )
-        self.session = self.crawler.engine.download(request, spider)
-        self.session.addCallback(lambda r: json.loads(r.body)['sessionToken'])
+        o = cls()
+        o.crawler = crawler
+        o.get_setting = crawler.settings.get
+        return o
 
     @defer.inlineCallbacks
     def process_item(self, item, spider):
-        session = yield self.session
+        if not self._attempt_login:
+            request = Request(
+                "https://api.appery.io/rest/1/db/login?{0}".format(urlencode({
+                    "username": self.get_setting('APPERYIO_USERNAME'),
+                    "password": self.get_setting('APPERYIO_PASSWORD')
+                })),
+                headers={
+                    "X-Appery-Database-Id": self.get_setting('APPERYIO_DB_ID')
+                },
+                priority=self.DOWNLOAD_PRIORITY
+            )
+            self._attempt_login = self.crawler.engine.download(request, spider)
 
-        flat_item = dict([(k, v and v[0] or None) for k, v in item.items()])
+            def extract_session(response):
+                if response.status != 200:
+                    raise RuntimeError("Unable to login: %d" % response.body)
+                self._session = json.loads(response.body)['sessionToken']
+                self._active = True
 
-        request = Request(
-            "https://api.appery.io/rest/1/db/collections/{0}".format(
-                self.settings.get('APPERYIO_COLLECTION_NAME')
-            ),
-            method='POST',
-            headers={
-                'Content-type': 'application/json',
-                'X-Appery-Database-Id': self.settings.get('APPERYIO_DB_ID'),
-                'X-Appery-Session-Token': session
-            },
-            body=json.dumps(flat_item, default=lambda x: None)
-        )
-        yield self.crawler.engine.download(request, spider)
+            self._attempt_login.addCallback(extract_session)
+
+        yield self._attempt_login
+
+        if self._active:
+
+            flatitem = dict([(k, v and v[0] or None) for k, v in item.items()])
+
+            request = Request(
+                "https://api.appery.io/rest/1/db/collections/{0}".format(
+                    self.get_setting('APPERYIO_COLLECTION_NAME')
+                ),
+                method='POST',
+                headers={
+                    'Content-type': 'application/json',
+                    'X-Appery-Database-Id': self.get_setting('APPERYIO_DB_ID'),
+                    'X-Appery-Session-Token': self._session
+                },
+                body=json.dumps(flatitem, default=lambda x: None),
+                priority=self.DOWNLOAD_PRIORITY
+            )
+
+            response = yield self.crawler.engine.download(request, spider)
+            if self._active and response.status != 200:
+                spider.log('Failed to insert item to appery.io: %s' %
+                           response.body, level=log.ERROR)
+                self._total_errors += 1
+                if self._total_errors >= self.INSERT_ERROR_DISABLE_THRESHOLD:
+                    spider.log('Too many errors: Disabling appery.io',
+                               level=log.ERROR)
+                    self._active = False
 
         defer.returnValue(item)
