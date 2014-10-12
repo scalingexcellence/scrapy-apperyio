@@ -8,14 +8,14 @@ Install
 
 Configure your settings.py:
 ----------------------------
-    ITEM_PIPELINES = [
-      'scrapyapperyio.ApperyIoPipeline',
-    ]
-    
+
+    ITEM_PIPELINES = {'scrapyapperyio.ApperyIoPipeline': 300}
+
     APPERYIO_DB_ID = '1234abcdef1234abcdef1234'
-    APPERYIO_USERNAME = 'user'
+    APPERYIO_USERNAME = 'root'
     APPERYIO_PASSWORD = 'pass'
-    APPERYIO_COLLECTION_NAME = 'collection'
+    APPERYIO_COLLECTION_NAME = 'properties'
+
 
 Changelog
 =========
