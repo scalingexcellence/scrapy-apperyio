@@ -14,11 +14,12 @@
 
 """Appery.io Database Pipeline for scrapy"""
 
+import json
+
 from twisted.internet import defer
 from scrapy.http import Request
 from urllib import urlencode
 from scrapy import log
-import json
 
 
 class ApperyIoPipeline(object):
@@ -54,7 +55,7 @@ class ApperyIoPipeline(object):
 
             def extract_session(response):
                 if response.status != 200:
-                    raise RuntimeError("Unable to login: %d" % response.body)
+                    raise RuntimeError("Unable to login: %s" % response.body)
                 self._session = json.loads(response.body)['sessionToken']
                 self._active = True
 
@@ -81,13 +82,13 @@ class ApperyIoPipeline(object):
             )
 
             response = yield self.crawler.engine.download(request, spider)
+            logger = spider.logger
             if self._active and response.status != 200:
-                spider.log('Failed to insert item to appery.io: %s' %
-                           response.body, level=log.ERROR)
+               logger.error('Failed to insert item to appery.io: %s' %
+                            response.body)
                 self._total_errors += 1
                 if self._total_errors >= self.INSERT_ERROR_DISABLE_THRESHOLD:
-                    spider.log('Too many errors: Disabling appery.io',
-                               level=log.ERROR)
+                    logger.error('Too many errors: Disabling appery.io')
                     self._active = False
 
         defer.returnValue(item)
