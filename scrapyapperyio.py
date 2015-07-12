@@ -19,7 +19,6 @@ import json
 from twisted.internet import defer
 from scrapy.http import Request
 from urllib import urlencode
-from scrapy import log
 
 
 class ApperyIoPipeline(object):
@@ -84,8 +83,8 @@ class ApperyIoPipeline(object):
             response = yield self.crawler.engine.download(request, spider)
             logger = spider.logger
             if self._active and response.status != 200:
-               logger.error('Failed to insert item to appery.io: %s' %
-                            response.body)
+                logger.error('Failed to insert item to appery.io: %s' %
+                             response.body)
                 self._total_errors += 1
                 if self._total_errors >= self.INSERT_ERROR_DISABLE_THRESHOLD:
                     logger.error('Too many errors: Disabling appery.io')
