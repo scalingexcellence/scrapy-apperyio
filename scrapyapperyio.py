@@ -55,7 +55,7 @@ class ApperyIoPipeline(object):
             def extract_session(response):
                 if response.status != 200:
                     raise RuntimeError("Unable to login: %s" % response.body)
-                self._session = json.loads(response.body)['sessionToken']
+                self._session = json.loads(str(response.body,encoding='utf-8'))['sessionToken']
                 self._active = True
 
             self._attempt_login.addCallback(extract_session)
