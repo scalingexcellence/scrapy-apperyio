@@ -18,7 +18,10 @@ import json
 
 from twisted.internet import defer
 from scrapy.http import Request
-from urllib import urlencode
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
 
 
 class ApperyIoPipeline(object):
@@ -55,7 +58,7 @@ class ApperyIoPipeline(object):
             def extract_session(response):
                 if response.status != 200:
                     raise RuntimeError("Unable to login: %s" % response.body)
-                self._session = json.loads(response.body)['sessionToken']
+                self._session = json.loads(str(response.body, encoding='utf-8'))['sessionToken']
                 self._active = True
 
             self._attempt_login.addCallback(extract_session)
